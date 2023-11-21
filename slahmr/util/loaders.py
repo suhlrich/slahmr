@@ -5,23 +5,23 @@ Utilities for loading input and models (reading pre-processed data)
 import os
 import importlib
 import glob
-from omegaconf import OmegaConf
+# from omegaconf import OmegaConf
 
 import numpy as np
 import torch
 
-from body_model import BodyModel
+from ..body_model.body_model import BodyModel
 
 
 ROOT_DIR = os.path.abspath(f"{__file__}/../../../")
 
 
-def load_config_from_log(log_dir):
-    hydra_dir = f"{log_dir}/.hydra"
-    cfg_path = f"{hydra_dir}/config.yaml"
-    assert os.path.isdir(hydra_dir), f"{hydra_dir} does not exist"
-    assert os.path.isfile(cfg_path), f"{cfg_path} does not exist"
-    return OmegaConf.load(cfg_path)
+# def load_config_from_log(log_dir):
+#     hydra_dir = f"{log_dir}/.hydra"
+#     cfg_path = f"{hydra_dir}/config.yaml"
+#     assert os.path.isdir(hydra_dir), f"{hydra_dir} does not exist"
+#     assert os.path.isfile(cfg_path), f"{cfg_path} does not exist"
+#     return OmegaConf.load(cfg_path)
 
 
 def resolve_cfg_paths(cfg):
@@ -41,13 +41,15 @@ def load_smpl_body_model(
     model_type="smplh",
     use_vtx_selector=True,
     device=None,
+    fit_gender = 'neutral',
+    npz_hack = True,
+    extra_vertices = {}
 ):
     """
     Load SMPL model
     """
     if device is None:
         device = torch.device("cpu")
-    fit_gender = path.split("/")[-2]
     return (
         BodyModel(
             bm_path=path,
@@ -55,6 +57,8 @@ def load_smpl_body_model(
             batch_size=batch_size,
             use_vtx_selector=use_vtx_selector,
             model_type=model_type,
+            npz_hack=npz_hack,
+            extra_vertices = extra_vertices
         ).to(device),
         fit_gender,
     )

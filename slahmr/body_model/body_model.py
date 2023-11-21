@@ -22,6 +22,8 @@ class BodyModel(nn.Module):
         use_vtx_selector=False,
         model_type="smplh",
         kid_template_path=None,
+        npz_hack = True,
+        extra_vertices = {}
     ):
         super(BodyModel, self).__init__()
         """
@@ -32,12 +34,25 @@ class BodyModel(nn.Module):
         :param model_type: one of [smpl, smplh, smplx]
         :param use_vtx_selector: if true, returns additional vertices as joints that correspond to OpenPose joints
         """
-        self.use_vtx_selector = use_vtx_selector
-        cur_vertex_ids = None
-        if self.use_vtx_selector:
+       
+        additional_kwargs = {} 
+       
+        if use_vtx_selector:
             cur_vertex_ids = vertex_ids[model_type]
-        data_struct = None
-        if ".npz" in bm_path:
+            cur_vertex_ids.update(extra_vertices)
+            if model_type =='smplx':
+                print('Issue with adding custom vertices to SMPLX model. Only ' +
+                      'default ones added.')
+            else:
+                additional_kwargs['vertex_ids'] = cur_vertex_ids
+            self.vertex_ids = cur_vertex_ids
+        else:
+            self.vertex_ids = None
+
+            
+        self.use_vtx_selector = use_vtx_selector
+
+        if ".npz" in bm_path and npz_hack:
             # smplx does not support .npz by default, so have to load in manually
             smpl_dict = np.load(bm_path, encoding="latin1")
             data_struct = Struct(**smpl_dict)
@@ -52,16 +67,19 @@ class BodyModel(nn.Module):
                     [data_struct.shapedirs, np.zeros((V, D, SMPL.SHAPE_SPACE_DIM - B))],
                     axis=-1,
                 )  # super hacky way to let smplh use 16-size beta
+                additional_kwargs['data_struct'] =data_struct
+        
+        
+
         kwargs = {
             "model_type": model_type,
-            "data_struct": data_struct,
             "num_betas": num_betas,
             "batch_size": batch_size,
             "num_expression_coeffs": num_expressions,
-            "vertex_ids": cur_vertex_ids,
             "use_pca": False,
             "flat_hand_mean": False,
         }
+        kwargs.update(additional_kwargs)
         if kid_template_path is not None:
             kwargs["kid_template_path"] = kid_template_path
             kwargs["age"] = "kid"
